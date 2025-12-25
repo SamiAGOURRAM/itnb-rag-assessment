@@ -125,13 +125,33 @@ Now you can ask questions about ITNB! 🎉
 
 ---
 
-### For Developers (Quick Test)
+### Alternative: Run All Steps at Once
 
-If you already have data and just want to test:
+If you want to do everything in one command (first-time setup):
 
 ```bash
-# Run everything at once (crawl → ingest → chat)
+# Complete pipeline: Crawl → Ingest → Chat
+python main.py --full-pipeline
+```
+
+### Daily Use (Data Already Exists)
+
+Once you've crawled and ingested once, just chat:
+
+```bash
+# Chat only (assumes data already in GroundX)
 python main.py
+```
+
+**Note**: `python main.py` does NOT re-crawl or re-ingest. It only starts the chat interface.
+
+### Update Website Content
+
+If ITNB website changed and you want fresh data:
+
+```bash
+# Re-crawl and re-ingest, then chat
+python main.py --crawl --ingest
 ```
 
 ---
