@@ -51,24 +51,87 @@ This project implements a complete RAG pipeline that:
 
 ## 🚀 Quick Start
 
+### For New Users (Starting from Scratch)
+
+**Step 1: Get Your API Keys**
+
+1. **GroundX** (Required - Vector Database)
+   - Sign up at [groundx.ai](https://www.groundx.ai/)
+   - Get your API key from dashboard
+
+2. **LLM API** (Required - provided by assessment or use OpenAI)
+   - Use the credentials provided in the technical assessment
+   - OR get OpenAI API key from [platform.openai.com](https://platform.openai.com/)
+
+3. **Langfuse** (Optional - Observability)
+   - Sign up at [cloud.langfuse.com](https://cloud.langfuse.com/)
+   - Create a project and get public/secret keys
+   - ⚠️ Can be skipped - leave empty in .env to disable
+
+**Step 2: Install Dependencies**
+
 ```bash
-# 1. Install dependencies
+# Install Python packages
 pip install -r requirements.txt
 
-# 2. Configure API keys
-cp .env.example .env
-# Edit .env with your API keys
-
-# 3. Install browser for crawler
+# Install Playwright browser for web crawling
 playwright install chromium
+```
 
-# 4. Run the complete pipeline
+**Step 3: Configure Your Environment**
+
+```bash
+# Copy the example configuration
+cp .env.example .env
+
+# Edit .env and add YOUR API keys
+# nano .env   (or use any text editor)
+```
+
+Update `.env` with your credentials:
+```bash
+GROUNDX_API_KEY=your_actual_groundx_key_here
+OPENAI_API_KEY=your_actual_llm_key_here
+LANGFUSE_SECRET_KEY=your_langfuse_key_or_leave_empty
+LANGFUSE_PUBLIC_KEY=your_langfuse_key_or_leave_empty
+```
+
+**Step 4: Crawl the ITNB Website**
+
+```bash
+# This will scrape ~32 pages from itnb.ch and save them as Markdown
+python main.py --crawl-only
+```
+
+Expected output: `✅ 32 pages crawled successfully → data/scraped/`
+
+**Step 5: Ingest Documents to GroundX**
+
+```bash
+# Upload the scraped pages to your GroundX vector database
+python main.py --ingest-only
+```
+
+Expected output: `✅ 32 documents ingested to GroundX`
+
+**Step 6: Start Chatting!**
+
+```bash
+# Launch the interactive RAG chatbot
+python main.py --chat-only
+```
+
+Now you can ask questions about ITNB! 🎉
+
+---
+
+### For Developers (Quick Test)
+
+If you already have data and just want to test:
+
+```bash
+# Run everything at once (crawl → ingest → chat)
 python main.py
-
-# Or run individual phases:
-python main.py --crawl-only      # Phase 1: Crawl website
-python main.py --ingest-only     # Phase 2: Ingest to GroundX
-python main.py --chat-only       # Phase 3: Chat interface
 ```
 
 ---
