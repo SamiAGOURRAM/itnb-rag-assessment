@@ -1,0 +1,11 @@
+# Core Dependencies
+crawl4ai>=0.2.0           # Web scraping and HTML to Markdown conversion
+groundx>=1.3.0            # GroundX API client for vector storage
+openai>=1.0.0             # OpenAI-compatible LLM client
+beautifulsoup4>=4.12.0    # HTML parsing for link extraction
+
+# Observability (Optional but Recommended)
+langfuse>=2.0.0           # LLM observability and tracing
+
+# Utilities
+python-dotenv>=1.0.0      # Environment variable management
