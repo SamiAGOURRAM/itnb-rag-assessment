@@ -38,15 +38,6 @@ This project implements a complete RAG pipeline that:
 - ✅ **RAG Question Answering**: Context-aware responses with source citations
 - ✅ **Interactive CLI**: Clean, user-friendly chat interface
 - ✅ **Source Attribution**: Every answer cites actual ITNB website URLs
-
-### Production-Grade Features
-- 🏥 **Health Check System**: Pre-flight validation of all components
-- 💬 **Conversational Memory**: Optional context retention across queries
-- 📊 **Langfuse Observability**: LLM monitoring and performance tracking
-- 🛡️ **Robust Error Handling**: Graceful failures with clear error messages
-- 🔧 **Modular Architecture**: Clean separation of concerns
-- ⚡ **Performance Optimized**: Average response time 2-3 seconds
-
 ---
 
 ## 🚀 Quick Start
