@@ -634,6 +634,243 @@ logging.basicConfig(level=logging.DEBUG)
 
 ---
 
+## 📐 Stage 2: Design Questions & Answers
+
+### Question 1: Role-Based Access Control (RBAC) Implementation
+
+**Scenario**: Enterprise users with different document access rights (e.g., department-specific access vs. manager-level access).
+
+**Solution Design**:
+
+#### Document-User Association
+
+Based on [GroundX API documentation](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents), we would use a **metadata-based approach**:
+
+1. **searchData Parameter**: Attach custom metadata to each document during ingestion
+   ```python
+   searchData = {
+       "department": "engineering",
+       "access_level": "confidential",
+       "allowed_roles": ["engineer", "manager", "admin"]
+   }
+   ```
+
+2. **Bucket Organization**: Create department-specific buckets for coarse-grained access
+   - `engineering-bucket`, `hr-bucket`, `finance-bucket`
+   - Buckets serve as organizational units ([GroundX Buckets](https://docs.eyelevel.ai/reference/api-reference/buckets/create))
+
+3. **Filter Parameter**: Use pre-filtering metadata
+   ```python
+   filter = {
+       "permissions": {
+           "roles": ["moderator", "admin"]
+       }
+   }
+   ```
+
+#### Access Enforcement at Query Time
+
+Per [GroundX Search API](https://docs.eyelevel.ai/reference/api-reference/documents/lookup), implement a **query-time filtering layer**:
+
+1. **Authentication Layer**: Verify user identity via JWT/OAuth
+2. **Role Extraction**: Extract user's roles and department from auth token
+3. **Filter Injection**: Pass user's authorized roles in the search filter
+   ```python
+   user_filter = {
+       "department": user.department,
+       "allowed_roles": user.roles  # ["engineer", "team_lead"]
+   }
+   search_results = groundx.search.content(
+       query=question,
+       filter=user_filter  # Pre-filters before vector search
+   )
+   ```
+
+4. **Bucket Scoping**: Query only buckets user has access to
+   ```python
+   accessible_buckets = get_user_buckets(user)  # ["engineering-bucket"]
+   search_results = groundx.search.content(
+       bucket_ids=accessible_buckets,
+       query=question
+   )
+   ```
+
+#### Limitations & Security Considerations
+
+**Limitations**:
+- GroundX uses [API Key-based authentication](https://docs.eyelevel.ai/documentation/fundamentals/api-concepts) (not native RBAC)
+- Filter enforcement happens at application layer, not GroundX layer
+- No built-in user management system
+
+**Security Considerations**:
+1. **Application-Level Enforcement**: RBAC must be implemented in middleware, not GroundX
+2. **API Key Security**: Single API key for GroundX - need application proxy
+   - Implement service account pattern
+   - Never expose GroundX API key to clients
+3. **Metadata Integrity**: Ensure metadata can't be manipulated by unauthorized users
+4. **Audit Logging**: Track who accessed what documents (implement separately)
+5. **Defense in Depth**:
+   - Filter at query time (primary)
+   - Bucket-level isolation (secondary)
+   - Post-processing filter (tertiary - verify results match user permissions)
+
+**Recommended Architecture**:
+```
+User → Auth Service → RBAC Middleware → GroundX Proxy → GroundX API
+         (JWT)        (Extract roles)    (Inject filters)   (Search)
+```
+
+---
+
+### Question 2: Scaling RAG for Large and Dynamic Knowledge Bases
+
+**Context**: ITNB's Sovereign Orchestrator - enterprise AI concierge handling thousands of documents with frequent updates.
+
+**Scalable RAG Architecture Design**:
+
+#### 1. Large-Scale Document Management
+
+**Mechanisms for Handling Scale**:
+
+1. **Incremental Ingestion Strategy**
+   - Use [GroundX batch upload](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents) via Python SDK
+   - Implement change detection (hash-based or timestamp)
+   - Only re-ingest modified documents
+   ```python
+   def ingest_changes(documents):
+       for doc in documents:
+           doc_hash = compute_hash(doc.content)
+           if doc_hash != stored_hash(doc.id):
+               groundx.ingest(doc, searchData={"hash": doc_hash})
+   ```
+
+2. **Hierarchical Bucket Structure**
+   - Organize by: `{department}/{project}/{doc_type}`
+   - Enables targeted searches (faster, more relevant)
+   - Example: `engineering/sovereign-orchestrator/api-docs`
+
+3. **Metadata-Rich Indexing**
+   - Leverage [GroundX's automatic metadata generation](https://docs.eyelevel.ai/documentation/fundamentals/api-concepts)
+   - Add custom searchData: `last_updated`, `owner`, `version`, `category`
+   - Enables smart filtering and ranking
+
+4. **X-Ray Data for Offline Processing**
+   - Download [X-Ray summaries](https://docs.eyelevel.ai/documentation/fundamentals/api-concepts) for local caching
+   - Use for analytics and monitoring without API calls
+
+#### 2. User-Empowered Document Management
+
+**Should Users Manage Documents?** ✅ **Yes** - Here's why and how:
+
+**Why Empower Users**:
+- **Domain Expertise**: Users know which documents are relevant/outdated
+- **Scalability**: Distributes workload (IT can't manually manage thousands of docs)
+- **Accuracy**: Real-time updates from source experts
+- **Ownership**: Departments own their knowledge bases
+
+**How to Implement**:
+
+1. **Self-Service Portal**
+   ```
+   User Interface → FastAPI Backend → GroundX API
+   - Upload documents (drag & drop)
+   - Set metadata (department, tags, permissions)
+   - Delete outdated docs
+   - Monitor ingestion status
+   ```
+
+2. **Automated Connectors** (Reduce Manual Work)
+   - **MS365 Integration**: Auto-sync SharePoint docs
+   - **Webhook Listeners**: Trigger on document changes
+   - **Scheduled Crawlers**: Weekly website scraping
+   ```python
+   @schedule.every().day.at("03:00")
+   def sync_sharepoint():
+       changes = detect_sharepoint_changes()
+       ingest_batch(changes)
+   ```
+
+3. **Version Control**
+   - Keep document versions in searchData
+   - Allow rollback if bad update
+   ```python
+   searchData = {
+       "version": "2.1.0",
+       "previous_version": "2.0.3",
+       "updated_by": "user@itnb.ch"
+   }
+   ```
+
+#### 3. Automation & Agent Workflows
+
+**Algorithms & Automation for Efficiency**:
+
+1. **Smart Re-Indexing** (Not Full Re-crawl)
+   - **Event-Driven Architecture**:
+     ```
+     Document Change → Event Queue → Incremental Ingest Agent
+     ```
+   - Use file hashes or modification timestamps
+   - Only update changed chunks (not entire doc)
+
+2. **Intelligent Routing Agent**
+   - Route queries to relevant buckets using metadata
+   ```python
+   def route_query(query, user_context):
+       # Classify query intent
+       intent = classify(query)  # "API docs", "HR policy", etc.
+
+       # Select relevant buckets
+       buckets = select_buckets(intent, user_context.department)
+
+       # Weighted search across buckets
+       return search(query, buckets, weights=relevance_scores)
+   ```
+
+3. **Feedback Loop for Ranking**
+   - Track which results users click
+   - Re-rank using engagement signals
+   ```python
+   searchData["engagement_score"] = clicks / impressions
+   ```
+
+4. **Stale Document Detection Agent**
+   ```python
+   @schedule.weekly
+   def detect_stale_docs():
+       old_docs = query(filter={"last_updated": < 6_months_ago})
+       notify_owners(old_docs, "Please review for accuracy")
+   ```
+
+5. **Semantic Deduplication**
+   - Use embeddings to find near-duplicate documents
+   - Prevent redundant content in index
+   ```python
+   def deduplicate(new_doc, threshold=0.95):
+       similar = search(new_doc.content, top_k=5)
+       if max(similar.scores) > threshold:
+           flag_as_duplicate(new_doc)
+   ```
+
+#### Performance Optimizations
+
+1. **Caching Layer**: Redis for frequent queries
+2. **Async Ingestion**: Queue-based (Celery/RQ)
+3. **Batch Processing**: Ingest in batches of 100-500 docs
+4. **Monitoring**: Track query latency, cache hit rate, index size
+
+---
+
+## 📚 Sources
+
+Design answers based on official GroundX documentation:
+- [GroundX API Concepts](https://docs.eyelevel.ai/documentation/fundamentals/api-concepts)
+- [Document Ingestion API](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents)
+- [Bucket Management](https://docs.eyelevel.ai/reference/api-reference/buckets/create)
+- [Search API Reference](https://docs.eyelevel.ai/reference/api-reference/documents/lookup)
+
+---
+
 ## 📝 License
 
 This project is part of the ITNB AI Engineering Internship Technical Assessment.
