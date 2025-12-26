@@ -90,11 +90,11 @@ LANGFUSE_PUBLIC_KEY=your_langfuse_key_or_leave_empty
 **Step 4: Crawl the ITNB Website**
 
 ```bash
-# This will scrape ~32 pages from itnb.ch and save them as Markdown
+# This will scrape pages from itnb.ch and save them as Markdown
 python main.py --crawl-only
 ```
 
-Expected output: `✅ 32 pages crawled successfully → data/scraped/`
+Expected output: `✅ pages crawled successfully → data/scraped/`
 
 **Step 5: Ingest Documents to GroundX**
 
@@ -103,7 +103,7 @@ Expected output: `✅ 32 pages crawled successfully → data/scraped/`
 python main.py --ingest-only
 ```
 
-Expected output: `✅ 32 documents ingested to GroundX`
+Expected output: `✅ documents ingested to GroundX`
 
 **Step 6: Start Chatting!**
 
