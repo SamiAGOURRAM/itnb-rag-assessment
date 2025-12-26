@@ -642,9 +642,11 @@ logging.basicConfig(level=logging.DEBUG)
 
 **Solution Design**:
 
+GroundX provides [**Fine-Grained Access Control (RBAC)**](https://www.eyelevel.ai/product/groundx-security) at document, bucket, and project levels, enabling enterprise-grade permission management.
+
 #### Document-User Association
 
-Based on [GroundX API documentation](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents), we would use a **metadata-based approach**:
+Based on [GroundX API documentation](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents) and [security features](https://www.eyelevel.ai/product/groundx-security), we would use a **metadata-based RBAC approach**:
 
 1. **searchData Parameter**: Attach custom metadata to each document during ingestion
    ```python
@@ -695,24 +697,40 @@ Per [GroundX Search API](https://docs.eyelevel.ai/reference/api-reference/docume
    )
    ```
 
-#### Limitations & Security Considerations
+#### Enterprise Security & Compliance
 
-**Limitations**:
-- GroundX uses [API Key-based authentication](https://docs.eyelevel.ai/documentation/fundamentals/api-concepts) (not native RBAC)
-- Filter enforcement happens at application layer, not GroundX layer
-- No built-in user management system
+**GroundX Security Features** ([source](https://www.eyelevel.ai/product/groundx-security)):
 
-**Security Considerations**:
-1. **Application-Level Enforcement**: RBAC must be implemented in middleware, not GroundX
-2. **API Key Security**: Single API key for GroundX - need application proxy
-   - Implement service account pattern
-   - Never expose GroundX API key to clients
-3. **Metadata Integrity**: Ensure metadata can't be manipulated by unauthorized users
-4. **Audit Logging**: Track who accessed what documents (implement separately)
+1. **Data Protection**:
+   - **End-to-End AES 256 Encryption** for data at rest and in transit
+   - **Air-Gapped Deployments** for isolated systems (no external internet required)
+   - **No Model Training on Customer Data** (unless explicitly authorized)
+
+2. **Access Control**:
+   - **Multi-Level Governance**: Document-level, bucket-level, and project-level permissions
+   - **Fine-Grained RBAC** for enhanced compliance
+
+3. **Compliance Certifications**:
+   - **SOC 2 Certified** for enterprise trust
+   - **HIPAA Compliant** for healthcare data
+   - **FIPS Certified** with CVE-free images for government/regulated industries
+
+4. **Secure Infrastructure**:
+   - **Kubernetes-based architecture** with minimal attack surface
+   - Single controlled point of data egress
+   - Distributed Kafka processing within protected clusters
+   - Dedicated storage and metadata databases with stringent security protocols
+
+**Implementation Considerations**:
+
+1. **Application-Level Enforcement**: Implement RBAC middleware before GroundX
+2. **API Key Security**: Use service account pattern, never expose keys to clients
+3. **Metadata Integrity**: Validate searchData permissions server-side
+4. **Audit Logging**: Track document access for compliance (implement separately)
 5. **Defense in Depth**:
    - Filter at query time (primary)
    - Bucket-level isolation (secondary)
-   - Post-processing filter (tertiary - verify results match user permissions)
+   - Post-processing verification (tertiary)
 
 **Recommended Architecture**:
 ```
@@ -852,12 +870,39 @@ User → Auth Service → RBAC Middleware → GroundX Proxy → GroundX API
            flag_as_duplicate(new_doc)
    ```
 
-#### Performance Optimizations
+#### 4. Performance Optimizations
 
 1. **Caching Layer**: Redis for frequent queries
 2. **Async Ingestion**: Queue-based (Celery/RQ)
 3. **Batch Processing**: Ingest in batches of 100-500 docs
 4. **Monitoring**: Track query latency, cache hit rate, index size
+
+#### 5. Enterprise Deployment & Security
+
+For large-scale production deployments ([GroundX Security](https://www.eyelevel.ai/product/groundx-security)):
+
+**Deployment Options**:
+- **Cloud**: AWS, Azure, Google Cloud Platform
+- **On-Premises**: Red Hat, Kubernetes clusters
+- **Air-Gapped**: Fully isolated environments for maximum security
+
+**Security Architecture for Regulated Industries**:
+1. **Infrastructure**:
+   - Kubernetes-based with minimal attack surface
+   - Single controlled point of data egress
+   - Distributed Kafka processing in protected clusters
+   - AES 256 encryption for all data (rest and transit)
+
+2. **Compliance Requirements**:
+   - SOC 2 and HIPAA certifications for healthcare/finance
+   - FIPS-certified images for government contractors
+   - CVE-free container images
+
+3. **Scalability Features**:
+   - Horizontal scaling via Kubernetes pods
+   - GPU-powered document processing
+   - Dedicated storage and metadata databases
+   - No external dependencies for air-gapped deployments
 
 ---
 
@@ -868,6 +913,7 @@ Design answers based on official GroundX documentation:
 - [Document Ingestion API](https://docs.eyelevel.ai/reference/api-reference/documents/ingest-documents)
 - [Bucket Management](https://docs.eyelevel.ai/reference/api-reference/buckets/create)
 - [Search API Reference](https://docs.eyelevel.ai/reference/api-reference/documents/lookup)
+- [GroundX Security & Enterprise Features](https://www.eyelevel.ai/product/groundx-security)
 
 ---
 
